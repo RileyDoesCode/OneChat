@@ -1,101 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>OneChat</title>
+
 <script src="/socket.io/socket.io.js"></script>
+
 <style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: #313338;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #313338;
+  color: white;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
 header {
+  flex-shrink: 0;
   padding: 15px;
   background: #1e1f22;
   text-align: center;
-  font-size: 20px;
+  font-size: clamp(16px, 3vw, 20px);
   font-weight: bold;
+  border-bottom: 1px solid #222;
 }
 
+/* CHAT AREA */
 #chat {
   flex: 1;
-  padding: 10px;
   overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
+/* MESSAGE */
 .message {
-  margin-bottom: 10px;
   background: #383a40;
-  padding: 8px;
-  border-radius: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  max-width: 95%;
+  word-wrap: break-word;
 }
 
 .nickname {
   font-weight: bold;
   color: #00a8fc;
+  font-size: 14px;
 }
 
 .time {
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.6;
+  margin-top: 4px;
 }
 
 #typing {
   font-size: 13px;
   opacity: 0.7;
-  margin-left: 10px;
+  padding-left: 15px;
+  height: 20px;
 }
 
+/* FOOTER INPUT AREA */
 footer {
+  flex-shrink: 0;
   display: flex;
   padding: 10px;
+  gap: 8px;
   background: #1e1f22;
+  border-top: 1px solid #222;
 }
 
 input {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   outline: none;
+  font-size: 14px;
+  background: #2b2d31;
+  color: white;
 }
 
 button {
-  margin-left: 10px;
-  padding: 10px 15px;
+  padding: 12px 16px;
   background: #5865f2;
   border: none;
   color: white;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
+  font-size: 14px;
+  min-width: 70px;
 }
 
+button:active {
+  transform: scale(0.96);
+}
+
+/* MODAL */
 #modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.8);
+  inset: 0;
+  background: rgba(0,0,0,0.85);
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 20px;
+  z-index: 999;
 }
 
 .modal-box {
+  width: 100%;
+  max-width: 350px;
   background: #2b2d31;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 15px;
   text-align: center;
+}
+
+.modal-box h3 {
+  margin-top: 0;
+}
+
+.modal-box input {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.modal-buttons {
+  margin-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* DESKTOP CENTERING */
+@media (min-width: 768px) {
+  body {
+    max-width: 900px;
+    margin: auto;
+    border-left: 1px solid #222;
+    border-right: 1px solid #222;
+  }
 }
 </style>
 </head>
+
 <body>
 
 <header>OneChat</header>
@@ -104,16 +170,19 @@ button {
 <div id="typing"></div>
 
 <footer>
-  <input id="messageInput" placeholder="Type a message...">
+  <input id="messageInput" placeholder="Type a message..." autocomplete="off">
   <button onclick="sendMessage()">Send</button>
 </footer>
 
+<!-- NICKNAME MODAL -->
 <div id="modal">
   <div class="modal-box">
     <h3>Input Nickname</h3>
-    <input id="nicknameInput"><br><br>
-    <button onclick="cancel()">Cancel</button>
-    <button onclick="confirmNickname()">OK</button>
+    <input id="nicknameInput" placeholder="Enter nickname">
+    <div class="modal-buttons">
+      <button onclick="cancel()">Cancel</button>
+      <button onclick="confirmNickname()">OK</button>
+    </div>
   </div>
 </div>
 
@@ -126,7 +195,7 @@ if(nickname){
 }
 
 function confirmNickname(){
-  const input = document.getElementById("nicknameInput").value;
+  const input = document.getElementById("nicknameInput").value.trim();
   if(!input) return;
   nickname = input;
   localStorage.setItem("nickname", nickname);
@@ -141,6 +210,7 @@ const chat = document.getElementById("chat");
 const typingDiv = document.getElementById("typing");
 
 socket.on("loadMessages", (msgs)=>{
+  chat.innerHTML = "";
   msgs.forEach(addMessage);
 });
 
@@ -155,18 +225,26 @@ socket.on("typing", (name)=>{
 
 function sendMessage(){
   const input = document.getElementById("messageInput");
-  if(!input.value) return;
+  if(!input.value.trim()) return;
 
   socket.emit("chatMessage", {
     nickname: nickname,
-    text: input.value
+    text: input.value.trim()
   });
 
   input.value = "";
 }
 
-document.getElementById("messageInput").addEventListener("input", ()=>{
+document.getElementById("messageInput")
+.addEventListener("input", ()=>{
   socket.emit("typing", nickname);
+});
+
+document.getElementById("messageInput")
+.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter"){
+    sendMessage();
+  }
 });
 
 function addMessage(msg){
